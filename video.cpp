@@ -47,6 +47,8 @@
 #include "scalebit.h"
 #include "hqxx-common.h"
 #include "2xSaI.h"
+
+#include "oren4x.h"
 #endif
 
 class SDL_to_MDFN_Surface_Wrapper : public MDFN_Surface
@@ -129,6 +131,8 @@ enum
 #define NTVB_SUPER2XSAI  14
 #define NTVB_SUPEREAGLE  15
 
+#define NTVB_OREN4X      16
+
 //#define NTVB_SCANLINES	 16
 
 static MDFNSetting_EnumList VDriver_List[] =
@@ -203,6 +207,7 @@ static MDFNSetting_EnumList Special_List[] =
     { "2xsai", 	-1, "2xSaI" },
     { "super2xsai", -1, "Super 2xSaI" },
     { "supereagle", -1, "Super Eagle" },
+    { "oren4x", -1, "Oren's WTFy 4X Algo" },
 #endif
 
     { "nn2x",	-1, "Nearest-neighbor 2x" },
@@ -385,6 +390,8 @@ static ScalerDefinition Scalers[] =
 	{"2xsai", NTVB_2XSAI, 2, 2 },
 	{"super2xsai", NTVB_SUPER2XSAI, 2, 2 },
 	{"supereagle", NTVB_SUPEREAGLE, 2, 2 },
+
+	{"oren4x", NTVB_OREN4X, 4, 4 },
 
 	//{ "scanlines", NTVB_SCANLINES, 1, 2 },
 	{ 0 }
@@ -1007,8 +1014,8 @@ void Video_Init(MDFNGI *gi)
  */
  if(CurrentScaler) {
 #ifdef WANT_FANCY_SCALERS
-  if(CurrentScaler->id == NTVB_HQ2X || CurrentScaler->id == NTVB_HQ3X || CurrentScaler->id == NTVB_HQ4X)
-  {
+  if(CurrentScaler->id == NTVB_HQ2X || CurrentScaler->id == NTVB_HQ3X || CurrentScaler->id == NTVB_HQ4X
+		|| CurrentScaler->id == NTVB_OREN4X){
    rs = 16;
    gs = 8;
    bs = 0;
@@ -1259,6 +1266,8 @@ static void SubBlit(MDFN_Surface *source_surface, const MDFN_Rect &src_rect, con
       hq3x_32(source_pixies, screen_pixies, eff_src_rect.w, eff_src_rect.h, eff_source_surface->pitchinpix * sizeof(uint32), screen_pitch);
      else if(CurrentScaler->id == NTVB_HQ4X)
       hq4x_32(source_pixies, screen_pixies, eff_src_rect.w, eff_src_rect.h, eff_source_surface->pitchinpix * sizeof(uint32), screen_pitch);
+     else if(CurrentScaler->id == NTVB_OREN4X)
+      oren4x(source_pixies, screen_pixies, eff_src_rect.w, eff_src_rect.h, eff_source_surface->pitchinpix * sizeof(uint32), screen_pitch);
      else if(CurrentScaler->id == NTVB_2XSAI || CurrentScaler->id == NTVB_SUPER2XSAI || CurrentScaler->id == NTVB_SUPEREAGLE)
      {
       MDFN_Surface saisrc(NULL, eff_src_rect.w + 4, eff_src_rect.h + 4, eff_src_rect.w + 4, eff_source_surface->format);
@@ -1397,7 +1406,7 @@ void BlitScreen(MDFN_Surface *msurface, const MDFN_Rect *DisplayRect, const int3
 		   IsInternalMessageActive() || Debugger_IsActive();
 
   OverlayOK = (vdriver == VDRIVER_OVERLAY) && !take_ssnapshot && !osd_active && (!CurrentScaler || (CurrentScaler->id != NTVB_HQ2X && CurrentScaler->id != NTVB_HQ3X &&
-		CurrentScaler->id != NTVB_HQ4X));
+		CurrentScaler->id != NTVB_HQ4X && CurrentScaler->id != NTVB_OREN4X));
 
   if(OverlayOK && LineWidths[0] != ~0)
   {
