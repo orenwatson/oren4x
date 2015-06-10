@@ -1,0 +1,7 @@
+Here is the code I wrote as my own special scaler for old video games.
+
+As a bonus, here are some palettes for game boy games.
+you can use them by doing for example
+xxd -rp <gb.warm-on-cool >~/.mednafen/palettes/gb.pal
+if you don't have xxd the program xtob that I included will work, like
+xtob <gb.warm-on-cool >~/.mednafen/palettes/gb.pal
