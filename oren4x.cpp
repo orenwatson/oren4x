@@ -9,7 +9,6 @@ static int thisframen;//which index to save this frame to.
 static unsigned *prevframe[N_PREVFRAMES];//saved frames in format given in comment below
 static unsigned *curframebuf;//save the preliminary render (noscroll) of current frame here
 /*4 bytes hash of 9 surrounding pixels, for each pixel, in each frame.*/
-#define gyuunyuu(A,B,C,D,E,F,G,H,I) 
 #endif
 
 #define bulr(C,D) ((C/2&0x7f7f7f)+(D/2&0x7f7f7f))
@@ -60,11 +59,11 @@ void oren4x( unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int 
 			iK = vg(-2, 0,iL);
 #ifdef MUHUHAHAHA
 			unsigned curhash =
-				2539*iA+2543*iB+2549*iC+2551*iD+2557*iE+
-				2579*iF+2591*iG+2593*iH+2609*iI+2617*iJ+
-				2621*iK+2633*iL+2647*iM+2657*iN+2659*iO+
-				1759*iP+1777*iQ+1783*iR+1787*iS+1789*iT+
-				1801*iU+1811*iV+1823*iW+1831*iX+1847*iY;
+				25391*iA^25431*iB^25419*iC^25151*iD^25157*iE^
+				25791*iF^25911*iG^25193*iH^26019*iI^21617*iJ^
+				26211*iK^26331*iL^26147*iM^26571*iN^26159*iO^
+				17591*iP^17771*iQ^17183*iR^11787*iS^17189*iT^
+				18011*iU^18111*iV^18213*iW^18311*iX^18147*iY;
 				prevframe[thisframen][i+j*Xres]=curhash;
 #define p(I,J)	(curframebuf[i*4+I+(j*4+J)*Xres*4])
 #else
@@ -366,30 +365,54 @@ while(1){
 	f0++;
 }
 /*now we find the scroll direction. if it is ambiguous, fail.*/
-if(prevframe[fn0][i+1+j*Xres]==curhash)id=1,jd=0;
-if(prevframe[fn0][i-1+j*Xres]==curhash)
-	if(id)goto fail;
-	else id=-1,jd=0;
-if(prevframe[fn0][i+(j+1)*Xres]==curhash)
-	if(id)goto fail;
-	else id=0,jd=1;
-if(prevframe[fn0][i+(j-1)*Xres]==curhash)
-	if(id||jd)goto fail;
-	else id=0,jd=-1;
-/* if scroll would go offscreen, do nothing */
-if(i+id*2<0)goto fail;
-if(i+id*2>=Xres)goto fail;
-if(j+jd*2<0)goto fail;
-if(j+jd*2>=Yres)goto fail;
 /*finally, find the scroll speed. find a frame which is scrolled even further in the past*/
-f1=f0+1;
-while(1){
-	if(f1>(N_PREVFRAMES-1))goto fail;
-	fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
-	if(!prevframe[fn1])goto fail;
-	if(prevframe[fn1][i+id*2+(j+jd*2)*Xres]==curhash)break;
-	f1++;
+/* if scroll would go offscreen, do nothing */
+if(prevframe[fn0][i+1+j*Xres]==curhash){
+	id=1,jd=0;
+	f1=f0+1;
+	while(1){
+		if(f1>N_PREVFRAMES-1)break;
+		fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
+		if(!prevframe[fn1])break;
+		if(prevframe[fn1][i+2+j*Xres]==curhash)goto success;
+		f1++;
+	}
 }
+if(prevframe[fn0][i-1+j*Xres]==curhash){
+	id=-1,jd=0;
+	f1=f0+1;
+	while(1){
+		if(f1>N_PREVFRAMES-1)break;
+		fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
+		if(!prevframe[fn1])break;
+		if(prevframe[fn1][i-2+j*Xres]==curhash)goto success;
+		f1++;
+	}
+}
+if(prevframe[fn0][i+(j+1)*Xres]==curhash){
+	id=0,jd=1;
+	f1=f0+1;
+	while(1){
+		if(f1>N_PREVFRAMES-1)break;
+		fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
+		if(!prevframe[fn1])break;
+		if(prevframe[fn1][i+(j+2)*Xres]==curhash)goto success;
+		f1++;
+	}
+}
+if(prevframe[fn0][i+(j-1)*Xres]==curhash){
+	id=0,jd=-1;
+	f1=f0+1;
+	while(1){
+		if(f1>N_PREVFRAMES-1)break;
+		fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
+		if(!prevframe[fn1])break;
+		if(prevframe[fn1][i+(j-2)*Xres]==curhash)goto success;
+		f1++;
+	}
+}
+goto fail;
+success:
 /*now we have cur, f0, f1. consider the graph of rounded-scroll versus interpolated-scroll as:
 Interpolated
 -3 -2 -1  0  1  2  3  4
@@ -399,9 +422,9 @@ Interpolated
 And consider that the changes happen at scroll +2 or -2.
 Hence, at f1 the scroll in out pixels should be -6 and at f0 it should be -2:
 so at cur, the scroll should be f0*4/(f1-f0)-2. */
-curscrl = f0*4/(f1-f0)-2;
-if(curscrl>3)curscrl=3;
-if(curscrl<-3)curscrl=-3;
+curscrl = f0*4/(f1-f0);
+if(curscrl>4)curscrl=4;
+if(curscrl<-4)curscrl=-4;
 outshft(id*curscrl,jd*curscrl);
 continue;
 fail:;//fail, do nothing, the result is as if there was no interpolation.

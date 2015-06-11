@@ -1,5 +1,10 @@
 Here is the code I wrote as my own special scaler for old video games.
 
+Features:
+- makes dithering look good and makes curves very smooth.
+- smooths horizontal and vertical scrolling.
+- does not create new colors, hence is compatible with paletted video.
+
 As a bonus, here are some palettes for game boy games.
 you can use them by doing for example
 xxd -rp <gb.warm-on-cool >~/.mednafen/palettes/gb.pal
