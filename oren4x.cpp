@@ -387,7 +387,7 @@ while(1){
 	if(f1>(N_PREVFRAMES-1))goto fail;
 	fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
 	if(!prevframe[fn1])goto fail;
-	if(prevframe[fn1][i+id+(j+jd)*Xres]==curhash)break;
+	if(prevframe[fn1][i+id*2+(j+jd*2)*Xres]==curhash)break;
 	f1++;
 }
 /*now we have cur, f0, f1. consider the graph of rounded-scroll versus interpolated-scroll as:
@@ -399,7 +399,9 @@ Interpolated
 And consider that the changes happen at scroll +2 or -2.
 Hence, at f1 the scroll in out pixels should be -6 and at f0 it should be -2:
 so at cur, the scroll should be f0*4/(f1-f0)-2. */
-curscrl = f0/(f1-f0);
+curscrl = f0*4/(f1-f0)-2;
+if(curscrl>3)curscrl=3;
+if(curscrl<-3)curscrl=-3;
 outshft(id*curscrl,jd*curscrl);
 continue;
 fail:;//fail, do nothing, the result is as if there was no interpolation.
