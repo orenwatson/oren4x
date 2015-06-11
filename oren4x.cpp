@@ -1,3 +1,17 @@
+/* This is the version with the horrifying scrolling interpolating code. Welcome to DIE!
+(to disable scrolling intepolation comment the next line)*/
+#include "stdlib.h"
+#define MUHUHAHAHA
+
+#ifdef MUHUHAHAHA
+#define N_PREVFRAMES 21
+static int thisframen;//which index to save this frame to.
+static unsigned *prevframe[N_PREVFRAMES];//saved frames in format given in comment below
+static unsigned *curframebuf;//save the preliminary render (noscroll) of current frame here
+/*4 bytes hash of 9 surrounding pixels, for each pixel, in each frame.*/
+#define gyuunyuu(A,B,C,D,E,F,G,H,I) 
+#endif
+
 #define bulr(C,D) ((C/2&0x7f7f7f)+(D/2&0x7f7f7f))
 #define ei else if
 void oren4x( unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int srcBpL, int BpL){
@@ -9,6 +23,10 @@ void oren4x( unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int 
    P  Q  R  S  T  1
    U  V  W  X  Y  2 */
 	unsigned iA,iB,iC,iD,iE,iF,iG,iH,iI,iJ,iK,iL,iM,iN,iO,iP,iQ,iR,iS,iT,iU,iV,iW,iX,iY;
+#ifdef MUHUHAHAHA
+	if(!curframebuf)curframebuf=(unsigned *)malloc(Xres*4*Yres*4*sizeof(unsigned));
+	if(!prevframe[thisframen])prevframe[thisframen]=(unsigned *)malloc(Xres*Yres*sizeof(unsigned));
+#endif
 	for(j=0;j<Yres;j++){
 		for(i=0;i<Xres;i++){
 #define in(I,J) (*(unsigned*)(pIn+(i+I)*4+(j+J)*srcBpL))
@@ -40,7 +58,19 @@ void oren4x( unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int 
 			iU = vg(-2, 2,iQ);
 			iP = vg(-2, 1,iQ);
 			iK = vg(-2, 0,iL);
+#ifdef MUHUHAHAHA
+			unsigned curhash =
+				2539*iA+2543*iB+2549*iC+2551*iD+2557*iE+
+				2579*iF+2591*iG+2593*iH+2609*iI+2617*iJ+
+				2621*iK+2633*iL+2647*iM+2657*iN+2659*iO+
+				1759*iP+1777*iQ+1783*iR+1787*iS+1789*iT+
+				1801*iU+1811*iV+1823*iW+1831*iX+1847*iY;
+				prevframe[thisframen][i+j*Xres]=curhash;
+#define p(I,J)	(curframebuf[i*4+I+(j*4+J)*Xres*4])
+#else
 #define p(I,J)	(*(unsigned*)(pOut+(i*4+I)*4+(j*4+J)*BpL))
+#endif
+#define o(I,J)	(*(unsigned*)(pOut+(i*4+I)*4+(j*4+J)*BpL))
 #define pat(A_,B_,C_,D_,E_,F_,G_,H_,I_,J_,K_,L_,M_,N_,O_,P_,Q_,R_,S_,T_,U_,V_,W_,X_,Y_) \
 (A_(riA)&&B_(riB)&&C_(riC)&&D_(riD)&&E_(riE)&&\
  F_(riF)&&G_(riG)&&H_(riH)&&I_(riI)&&J_(riJ)&&\
@@ -128,60 +158,60 @@ o16,o15,o14,o13
 	o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m) \
 {normal_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
-ap(out,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m);continue;}}
+ap(out,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m);goto drawing_done;}}
 
 #define patout2(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25,\
 	o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m) \
 {normal_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
-ap(out,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m);continue;}}\
+ap(out,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m);goto drawing_done;}}\
 {rot090_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
-	ap(out,ap(rot4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16),m);continue;}}
+	ap(out,ap(rot4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16),m);goto drawing_done;}}
 
 /* match pattern, and rotated pattern */
 #define patout4(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25,\
 	o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m) \
 {normal_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
-	ap(out,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m);continue;}}\
+	ap(out,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m);goto drawing_done;}}\
 {rot090_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
-	ap(out,ap(rot4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16),m);continue;}}\
+	ap(out,ap(rot4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16),m);goto drawing_done;}}\
 {rot180_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
-	ap(out,ap(rot4x4,ap(rot4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16)),m);continue;}}\
+	ap(out,ap(rot4x4,ap(rot4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16)),m);goto drawing_done;}}\
 {rot270_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
-	ap(out,ap(rot4x4,ap(rot4x4,ap(rot4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16))),m);continue;}}
+	ap(out,ap(rot4x4,ap(rot4x4,ap(rot4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16))),m);goto drawing_done;}}
 
 /* match pattern, and rotated pattern, and flipped, rotated pattern */
 #define patout8(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25,\
 	o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m) \
 {normal_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
-	ap(out,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m);continue;}}\
+	ap(out,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m);goto drawing_done;}}\
 {rot090_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
-	ap(out,ap(rot4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16),m);continue;}}\
+	ap(out,ap(rot4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16),m);goto drawing_done;}}\
 {rot180_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
-	ap(out,ap(rot4x4,ap(rot4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16)),m);continue;}}\
+	ap(out,ap(rot4x4,ap(rot4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16)),m);goto drawing_done;}}\
 {rot270_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
-	ap(out,ap(rot4x4,ap(rot4x4,ap(rot4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16))),m);continue;}}\
+	ap(out,ap(rot4x4,ap(rot4x4,ap(rot4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16))),m);goto drawing_done;}}\
 {flp180_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
-	ap(out,ap(flp4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16),m);continue;}}\
+	ap(out,ap(flp4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16),m);goto drawing_done;}}\
 {flp270_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
-	ap(out,ap(rot4x4,ap(flp4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16)),m);continue;}}\
+	ap(out,ap(rot4x4,ap(flp4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16)),m);goto drawing_done;}}\
 {fliped_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
-	ap(out,ap(rot4x4,ap(rot4x4,ap(flp4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16))),m);continue;}}\
+	ap(out,ap(rot4x4,ap(rot4x4,ap(flp4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16))),m);goto drawing_done;}}\
 {flp090_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
-	ap(out,ap(rot4x4,ap(rot4x4,ap(rot4x4,ap(flp4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16)))),m);continue;}}
+	ap(out,ap(rot4x4,ap(rot4x4,ap(rot4x4,ap(flp4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16)))),m);goto drawing_done;}}
 
 #define M(x) (riM==x)
 #define N(x) (riN==x)
@@ -283,7 +313,7 @@ M,M,M,M,
 M,M,M,M,0);
 ap9(patout8,
 Z,NM,H,
-H,Z ,Z,
+H,Z ,M,
 Z,Z ,Z,
 H,H,H,M,
 H,M,M,M,
@@ -313,5 +343,70 @@ M,M,M,M,
 M,M,M,M,
 M,M,M,M,
 M,M,M,M,0);}
+drawing_done:;
 }}/*end fors*/
+
+#ifdef MUHUHAHAHA
+#define outshft(X,Y) \
+      ({o(0,0)=p(X,Y  );o(1,0)=p(X+1,Y  );o(2,0)=p(X+2,Y  );o(3,0)=p(X+3,Y  );\
+        o(0,1)=p(X,Y+1);o(1,1)=p(X+1,Y+1);o(2,1)=p(X+2,Y+1);o(3,1)=p(X+3,Y+1);\
+        o(0,2)=p(X,Y+2);o(1,2)=p(X+1,Y+2);o(2,2)=p(X+2,Y+2);o(3,2)=p(X+3,Y+2);\
+        o(0,3)=p(X,Y+3);o(1,3)=p(X+1,Y+3);o(2,3)=p(X+2,Y+3);o(3,3)=p(X+3,Y+3);})
+for(j=0;j<Yres;j++){
+for(i=0;i<Xres;i++){
+/*now, we check if the current frame locally looks like a previous frame, within the last few frames. */
+int fn0,fn1,f1,f0 = 1;//how many frames back, the first frame differing is.
+unsigned curhash = prevframe[thisframen][i+j*Xres];
+int id=0,jd=0,curscrl;
+while(1){
+	if(f0>(N_PREVFRAMES-1)/2)goto fail;
+	fn0 = (thisframen-f0+N_PREVFRAMES)%N_PREVFRAMES;
+	if(!prevframe[fn0])goto fail;
+	if(prevframe[fn0][i+j*Xres]!=curhash)break;
+	f0++;
+}
+/*now we find the scroll direction. if it is ambiguous, fail.*/
+if(prevframe[fn0][i+1+j*Xres]==curhash)id=1,jd=0;
+if(prevframe[fn0][i-1+j*Xres]==curhash)
+	if(id)goto fail;
+	else id=-1,jd=0;
+if(prevframe[fn0][i+(j+1)*Xres]==curhash)
+	if(id)goto fail;
+	else id=0,jd=1;
+if(prevframe[fn0][i+(j-1)*Xres]==curhash)
+	if(id||jd)goto fail;
+	else id=0,jd=-1;
+/* if scroll would go offscreen, do nothing */
+if(i+id*2<0)goto fail;
+if(i+id*2>=Xres)goto fail;
+if(j+jd*2<0)goto fail;
+if(j+jd*2>=Yres)goto fail;
+/*finally, find the scroll speed. find a frame which is scrolled even further in the past*/
+f1=f0+1;
+while(1){
+	if(f1>(N_PREVFRAMES-1))goto fail;
+	fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
+	if(!prevframe[fn1])goto fail;
+	if(prevframe[fn1][i+id+(j+jd)*Xres]==curhash)break;
+	f1++;
+}
+/*now we have cur, f0, f1. consider the graph of rounded-scroll versus interpolated-scroll as:
+Interpolated
+-3 -2 -1  0  1  2  3  4
+                 /-----   1
+    /-----------/         0
+---/                     -1 Rounded
+And consider that the changes happen at scroll +2 or -2.
+Hence, at f1 the scroll in out pixels should be -6 and at f0 it should be -2:
+so at cur, the scroll should be f0*4/(f1-f0)-2. */
+curscrl = f0/(f1-f0);
+outshft(id*curscrl,jd*curscrl);
+continue;
+fail:;//fail, do nothing, the result is as if there was no interpolation.
+outshft(0,0);
+
+}}/*end fors*/
+thisframen++;
+thisframen%=N_PREVFRAMES;
+#endif
 }
