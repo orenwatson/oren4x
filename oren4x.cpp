@@ -410,12 +410,14 @@ so at any f, the scroll should be (f0-f)*4/(f1-f0)-2. for f=0, the current frame
 this works out to f0*4/(f1-f0)-2 */
 /* for very fast scrolling, don't even bother.
    not enough frames to interpolate over.*/
-if(f1-f0 < 4)goto fail;
+//if(f1-f0 < 4)goto fail;
 curscrl = f0*4/(f1-f0)-2;
 /*things shouldn't scroll more than 4 pixels, because by the fourth pixel, 
 if scroll speed is constant, the input should have changed.*/
-if(curscrl>4)curscrl=0;
-if(curscrl<-4)curscrl=0;
+//if(curscrl>4)curscrl=0;
+//if(curscrl<-4)curscrl=0;
+/* note that I have commented out some checks that should be ensured
+   by code that happens earlier and are therefore redundant. */
 outshft(id*curscrl,jd*curscrl);
 continue;
 fail:;//fail, do nothing, the result is as if there was no interpolation.
@@ -444,9 +446,10 @@ while(1){
 }
 /* if f1 is too close to f0, then the scroll is stale, and would lead to an offset of
    greater than 4. dismiss this case from the start by starting the search for f1 later. 
-   math: f0*4/(f1-f0)-2 < 4 ==> f0*4 < 6*(f1-f0) ==> f0*10 < f1*6 ==> f1 > f0*5/3 */
+   math: f0*4/(f1-f0)-2 < 4 ==> f0*4 < 6*(f1-f0) ==> f0*10 < f1*6 ==> f1 > f0*5/3 
+   Also, f1-f0 < 4 implies the scroll is too fast. thus f1 >= f0 + 4 */
 int f1start = f0*5/3;
-if(f1start <= f0)f1start=f0+1;
+if(f1start < f0+4)f1start=f0+4;
 /* now we find the scroll direction, and then find a frame which
    is scrolled even further in the past, if such scroll would go offscreen,
    dismiss that direction as invalid ( but still try others ).*/
