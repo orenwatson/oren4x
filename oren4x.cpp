@@ -15,7 +15,6 @@ static const int dir_down = 4;
 static const int dir_up = 8;
 #endif
 
-#define bulr(C,D) ((C/2&0x7f7f7f)+(D/2&0x7f7f7f))
 #define ei else if
 void oren4x( unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int srcBpL, int BpL){
 	int i,j,k;
@@ -32,10 +31,11 @@ void oren4x( unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int 
 #endif
 	for(j=0;j<Yres;j++){
 		for(i=0;i<Xres;i++){
+/* macros for safe reading of neighbouring pixels */
 #define in(I,J) (*(unsigned*)(pIn+(i+I)*4+(j+J)*srcBpL))
 #define vl(I,J) (i+I>=0&&i+I<Xres&&j+J>=0&&j+J<Yres)
-#define vq(I,J,C) (vl(I,J)&&in(I,J)==C)
 #define vg(I,J,D) (vl(I,J)?in(I,J):D)
+/* read a 5x5 block around this pixel */
 			iM = in( 0, 0);
 			iH = vg( 0,-1,iM);
 			iL = vg(-1, 0,iM);
@@ -62,6 +62,7 @@ void oren4x( unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int 
 			iP = vg(-2, 1,iQ);
 			iK = vg(-2, 0,iL);
 #ifdef MUHUHAHAHA
+			/* a hash of the 3x3 block around this pixel, used for scroll detection */
 			unsigned curhash =
 				25911*iG^25193*iH^26019*iI^
 				26331*iL^26147*iM^26571*iN^
@@ -72,6 +73,7 @@ void oren4x( unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int 
 #define p(I,J)	(*(unsigned*)(pOut+(i*4+I)*4+(j*4+J)*BpL))
 #endif
 #define o(I,J)	(*(unsigned*)(pOut+(i*4+I)*4+(j*4+J)*BpL))
+/* match against a pattern of 5x5 pixels */
 #define pat(A_,B_,C_,D_,E_,F_,G_,H_,I_,J_,K_,L_,M_,N_,O_,P_,Q_,R_,S_,T_,U_,V_,W_,X_,Y_) \
 (A_(riA)&&B_(riB)&&C_(riC)&&D_(riD)&&E_(riE)&&\
  F_(riF)&&G_(riG)&&H_(riH)&&I_(riI)&&J_(riJ)&&\
@@ -82,6 +84,7 @@ void oren4x( unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int 
 #define ap(a,b...) a(b)
 #define ap2(a,b...) a(b)
 #define ap3(a,b...) a(b)
+/* used for patterns which don't look at the outer pixels */
 #define ap9(f,G_,H_,I_,L_,M_,N_,Q_,R_,S_,b...) \
 f(Z,Z ,Z ,Z ,Z,\
   Z,G_,H_,I_,Z,\
@@ -155,12 +158,14 @@ o16,o15,o14,o13
 	p(0,2)=ri ## I;p(1,2)=Q?:ri ## J;p(2,2)=Q?:ri ## K;p(3,2)=ri ## L;\
 	p(0,3)=ri ## M;p(1,3)=ri ## N;p(2,3)=ri ## O;p(3,3)=ri ## P;})
 
+/* pattern which is the same if rotated or flipped */
 #define patout1(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25,\
 	o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m) \
 {normal_meanings;\
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
 ap(out,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m);goto drawing_done;}}
 
+/* pattern which is the same if rotated 180 degrees or flipped */
 #define patout2(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25,\
 	o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m) \
 {normal_meanings;\
@@ -170,7 +175,7 @@ ap(out,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m);goto drawing_do
 if(pat(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25)){\
 	ap(out,ap(rot4x4,o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16),m);goto drawing_done;}}
 
-/* match pattern, and rotated pattern */
+/* match pattern, and rotated pattern, asume it's the same if flipped */
 #define patout4(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25,\
 	o1,o2,o3,o4,o5,o6,o7,o8,o9,o10,o11,o12,o13,o14,o15,o16,m) \
 {normal_meanings;\
@@ -336,8 +341,7 @@ H,H,M,M,
 H,M,M,M,
 M,M,M,M,
 M,M,M,M,0);
-
-/*default*/
+/*default if no patterns match*/
 {normal_meanings;
 ap(out,
 M,M,M,M,
@@ -360,9 +364,11 @@ unsigned f1,f0 = 1;//how many frames back, the first frame differing is.
 unsigned direction;
 int id=0,jd=0,curscrl;
 find_scroll_direction(direction,f0,f1,Xres,Yres,i,j);
-if(!direction)goto fail;
+if(!direction)goto fail;// this pixel is staying the same.
 if(direction&(direction-1)){//more than one bit set, it is ambiguous, so check if pixels nearby are unambiguous
 	unsigned d0,d1,nf0,nf1;
+	/* if a nearby pixel has a valid direction, and it is one of the 
+	   directions this pixel could go, go in that direction. */
 #define disambiguate(I,J) \
 	find_scroll_direction(d1,f0,f1,Xres,Yres,i+I,j+J);\
 	d0 = direction & d1;\
@@ -400,6 +406,8 @@ Hence, at f1 the scroll in out pixels should be -6 and at f0 it should be -2:
 so at any f, the scroll should be (f0-f)*4/(f1-f0)-2. for f=0, the current frame,
 this works out to f0*4/(f1-f0)-2 */
 curscrl = f0*4/(f1-f0)-2;
+/*things shouldn't scroll more than 4 pixels, because by the fourth pixel, 
+if scroll speed is constant, the input should have changed.*/
 if(curscrl>4)curscrl=0;
 if(curscrl<-4)curscrl=0;
 outshft(id*curscrl,jd*curscrl);
@@ -415,21 +423,22 @@ thisframen%=N_PREVFRAMES;
 
 
 static void find_scroll_direction(unsigned &direction,unsigned &f0,unsigned &f1,int Xres,int Yres,int i,int j){
-direction = 0;
+direction = 0;/* if things don't go well, we'll have a direction of zero, indicating we couldn't find a good way to scroll. */
 f0=1;
 if(i<0||i>=Xres||j<0||j>=Yres)return;
 unsigned curhash = prevframe[thisframen][i+j*Xres];
 unsigned fn0;
+/* first, we find out if this pixel has changed */
 while(1){
-	if(f0>(N_PREVFRAMES-1)/2)return;
+	if(f0>(N_PREVFRAMES-1)/2)return;/* the scroll is either too slow, or there isn't one. */
 	fn0 = (thisframen-f0+N_PREVFRAMES)%N_PREVFRAMES;
 	if(!prevframe[fn0])return;
 	if(prevframe[fn0][i+j*Xres]!=curhash)break;
 	f0++;
 }
-/*now we find the scroll direction.*/
-/*finally, find the scroll speed. find a frame which is scrolled even further in the past*/
-/* if scroll would go offscreen, do nothing */
+/* now we find the scroll direction, and then find a frame which
+   is scrolled even further in the past, if such scroll would go offscreen,
+   dismiss that direction as invalid ( but still try others ). */
 if(i+2<Xres&&prevframe[fn0][i+1+j*Xres]==curhash){
 	f1=f0+1;
 	while(1){
