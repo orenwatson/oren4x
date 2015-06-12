@@ -4,7 +4,10 @@
 #define MUHUHAHAHA
 
 #ifdef MUHUHAHAHA
-#define N_PREVFRAMES 21
+/* increased to 41 frames, the slowest scroll I've seen is in Sachen 4-in-1 Armour Force,
+about 4 pix/sec, so this oughta cut it... hopefully. unsmoothed fast scrolls
+don't seem to bother me, but jerky slow scrolling pisses me off. */
+#define N_PREVFRAMES 41 
 static int thisframen;//which index to save this frame to.
 static unsigned *prevframe[N_PREVFRAMES];//saved frames in 4 bytes hash of 9 surrounding pixels, for each pixel, in each frame.
 static unsigned *curframebuf;//save the preliminary render (noscroll) of current frame here
@@ -405,6 +408,9 @@ And consider that the changes happen at scroll +2 or -2.
 Hence, at f1 the scroll in out pixels should be -6 and at f0 it should be -2:
 so at any f, the scroll should be (f0-f)*4/(f1-f0)-2. for f=0, the current frame,
 this works out to f0*4/(f1-f0)-2 */
+/* for very fast scrolling, don't even bother.
+   not enough frames to interpolate over.*/
+if(f1-f0 < 4)goto fail;
 curscrl = f0*4/(f1-f0)-2;
 /*things shouldn't scroll more than 4 pixels, because by the fourth pixel, 
 if scroll speed is constant, the input should have changed.*/
@@ -436,11 +442,16 @@ while(1){
 	if(prevframe[fn0][i+j*Xres]!=curhash)break;
 	f0++;
 }
+/* if f1 is too close to f0, then the scroll is stale, and would lead to an offset of
+   greater than 4. dismiss this case from the start by starting the search for f1 later. 
+   math: f0*4/(f1-f0)-2 < 4 ==> f0*4 < 6*(f1-f0) ==> f0*10 < f1*6 ==> f1 > f0*5/3 */
+int f1start = f0*5/3;
+if(f1start <= f0)f1start=f0+1;
 /* now we find the scroll direction, and then find a frame which
    is scrolled even further in the past, if such scroll would go offscreen,
-   dismiss that direction as invalid ( but still try others ). */
+   dismiss that direction as invalid ( but still try others ).*/
 if(i+2<Xres&&prevframe[fn0][i+1+j*Xres]==curhash){
-	f1=f0+1;
+	f1=f1start;
 	while(1){
 		if(f1>N_PREVFRAMES-1)break;
 		unsigned fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
@@ -450,7 +461,7 @@ if(i+2<Xres&&prevframe[fn0][i+1+j*Xres]==curhash){
 	}
 }
 if(i-2>=0&&prevframe[fn0][i-1+j*Xres]==curhash){
-	f1=f0+1;
+	f1=f1start;
 	while(1){
 		if(f1>N_PREVFRAMES-1)break;
 		unsigned fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
@@ -460,7 +471,7 @@ if(i-2>=0&&prevframe[fn0][i-1+j*Xres]==curhash){
 	}
 }
 if(j+2<Yres&&prevframe[fn0][i+(j+1)*Xres]==curhash){
-	f1=f0+1;
+	f1=f1start;
 	while(1){
 		if(f1>N_PREVFRAMES-1)break;
 		unsigned fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
@@ -470,7 +481,7 @@ if(j+2<Yres&&prevframe[fn0][i+(j+1)*Xres]==curhash){
 	}
 }
 if(j-2>=0&&prevframe[fn0][i+(j-1)*Xres]==curhash){
-	f1=f0+1;
+	f1=f1start;
 	while(1){
 		if(f1>N_PREVFRAMES-1)break;
 		unsigned fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
