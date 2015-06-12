@@ -6,9 +6,13 @@
 #ifdef MUHUHAHAHA
 #define N_PREVFRAMES 21
 static int thisframen;//which index to save this frame to.
-static unsigned *prevframe[N_PREVFRAMES];//saved frames in format given in comment below
+static unsigned *prevframe[N_PREVFRAMES];//saved frames in 4 bytes hash of 9 surrounding pixels, for each pixel, in each frame.
 static unsigned *curframebuf;//save the preliminary render (noscroll) of current frame here
-/*4 bytes hash of 9 surrounding pixels, for each pixel, in each frame.*/
+static void find_scroll_direction(unsigned &direction,unsigned &f0,unsigned &f1,int Xres,int Yres,int i,int j);
+static const int dir_right = 1;
+static const int dir_left = 2;
+static const int dir_down = 4;
+static const int dir_up = 8;
 #endif
 
 #define bulr(C,D) ((C/2&0x7f7f7f)+(D/2&0x7f7f7f))
@@ -59,12 +63,10 @@ void oren4x( unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int 
 			iK = vg(-2, 0,iL);
 #ifdef MUHUHAHAHA
 			unsigned curhash =
-				25391*iA^25431*iB^25419*iC^25151*iD^25157*iE^
-				25791*iF^25911*iG^25193*iH^26019*iI^21617*iJ^
-				26211*iK^26331*iL^26147*iM^26571*iN^26159*iO^
-				17591*iP^17771*iQ^17183*iR^11787*iS^17189*iT^
-				18011*iU^18111*iV^18213*iW^18311*iX^18147*iY;
-				prevframe[thisframen][i+j*Xres]=curhash;
+				25911*iG^25193*iH^26019*iI^
+				26331*iL^26147*iM^26571*iN^
+				17771*iQ^17183*iR^11787*iS;
+			prevframe[thisframen][i+j*Xres]=curhash;
 #define p(I,J)	(curframebuf[i*4+I+(j*4+J)*Xres*4])
 #else
 #define p(I,J)	(*(unsigned*)(pOut+(i*4+I)*4+(j*4+J)*BpL))
@@ -354,65 +356,39 @@ drawing_done:;
 for(j=0;j<Yres;j++){
 for(i=0;i<Xres;i++){
 /*now, we check if the current frame locally looks like a previous frame, within the last few frames. */
-int fn0,fn1,f1,f0 = 1;//how many frames back, the first frame differing is.
-unsigned curhash = prevframe[thisframen][i+j*Xres];
+unsigned f1,f0 = 1;//how many frames back, the first frame differing is.
+unsigned direction;
 int id=0,jd=0,curscrl;
-while(1){
-	if(f0>(N_PREVFRAMES-1)/2)goto fail;
-	fn0 = (thisframen-f0+N_PREVFRAMES)%N_PREVFRAMES;
-	if(!prevframe[fn0])goto fail;
-	if(prevframe[fn0][i+j*Xres]!=curhash)break;
-	f0++;
-}
-/*now we find the scroll direction. if it is ambiguous, fail.*/
-/*finally, find the scroll speed. find a frame which is scrolled even further in the past*/
-/* if scroll would go offscreen, do nothing */
-if(prevframe[fn0][i+1+j*Xres]==curhash){
-	id=1,jd=0;
-	f1=f0+1;
-	while(1){
-		if(f1>N_PREVFRAMES-1)break;
-		fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
-		if(!prevframe[fn1])break;
-		if(prevframe[fn1][i+2+j*Xres]==curhash)goto success;
-		f1++;
+find_scroll_direction(direction,f0,f1,Xres,Yres,i,j);
+if(!direction)goto fail;
+if(direction&(direction-1)){//more than one bit set, it is ambiguous, so check if pixels nearby are unambiguous
+	unsigned d0,d1,nf0,nf1;
+#define disambiguate(I,J) \
+	find_scroll_direction(d1,f0,f1,Xres,Yres,i+I,j+J);\
+	d0 = direction & d1;\
+	if(d0 && !(d0&(d0-1))){\
+		direction=d0;\
+		goto success;\
 	}
+	disambiguate(1,0);
+	disambiguate(-1,0);
+	disambiguate(0,1);
+	disambiguate(0,-1);
+	disambiguate(1,1);
+	disambiguate(1,-1);
+	disambiguate(-1,-1);
+	disambiguate(-1,1);
+	disambiguate(2,0);
+	disambiguate(-2,0);
+	disambiguate(0,2);
+	disambiguate(0,-2);
+	goto fail;
 }
-if(prevframe[fn0][i-1+j*Xres]==curhash){
-	id=-1,jd=0;
-	f1=f0+1;
-	while(1){
-		if(f1>N_PREVFRAMES-1)break;
-		fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
-		if(!prevframe[fn1])break;
-		if(prevframe[fn1][i-2+j*Xres]==curhash)goto success;
-		f1++;
-	}
-}
-if(prevframe[fn0][i+(j+1)*Xres]==curhash){
-	id=0,jd=1;
-	f1=f0+1;
-	while(1){
-		if(f1>N_PREVFRAMES-1)break;
-		fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
-		if(!prevframe[fn1])break;
-		if(prevframe[fn1][i+(j+2)*Xres]==curhash)goto success;
-		f1++;
-	}
-}
-if(prevframe[fn0][i+(j-1)*Xres]==curhash){
-	id=0,jd=-1;
-	f1=f0+1;
-	while(1){
-		if(f1>N_PREVFRAMES-1)break;
-		fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
-		if(!prevframe[fn1])break;
-		if(prevframe[fn1][i+(j-2)*Xres]==curhash)goto success;
-		f1++;
-	}
-}
-goto fail;
-success:
+success:;
+if(direction == dir_right)id=1,jd=0;
+if(direction == dir_left)id=-1,jd=0;
+if(direction == dir_up)id=0,jd=-1;
+if(direction == dir_down)id=0,jd=1;
 /*now we have cur, f0, f1. consider the graph of rounded-scroll versus interpolated-scroll as:
 Interpolated
 -3 -2 -1  0  1  2  3  4
@@ -421,10 +397,11 @@ Interpolated
 ---/                     -1 Rounded
 And consider that the changes happen at scroll +2 or -2.
 Hence, at f1 the scroll in out pixels should be -6 and at f0 it should be -2:
-so at cur, the scroll should be f0*4/(f1-f0)-2. */
+so at any f, the scroll should be (f0-f)*4/(f1-f0)-2. for f=0, the current frame,
+this works out to f0*4/(f1-f0)-2 */
 curscrl = f0*4/(f1-f0)-2;
-if(curscrl>4)curscrl=4;
-if(curscrl<-4)curscrl=-4;
+if(curscrl>4)curscrl=0;
+if(curscrl<-4)curscrl=0;
 outshft(id*curscrl,jd*curscrl);
 continue;
 fail:;//fail, do nothing, the result is as if there was no interpolation.
@@ -434,4 +411,64 @@ outshft(0,0);
 thisframen++;
 thisframen%=N_PREVFRAMES;
 #endif
+}
+
+
+static void find_scroll_direction(unsigned &direction,unsigned &f0,unsigned &f1,int Xres,int Yres,int i,int j){
+direction = 0;
+f0=1;
+if(i<0||i>=Xres||j<0||j>=Yres)return;
+unsigned curhash = prevframe[thisframen][i+j*Xres];
+unsigned fn0;
+while(1){
+	if(f0>(N_PREVFRAMES-1)/2)return;
+	fn0 = (thisframen-f0+N_PREVFRAMES)%N_PREVFRAMES;
+	if(!prevframe[fn0])return;
+	if(prevframe[fn0][i+j*Xres]!=curhash)break;
+	f0++;
+}
+/*now we find the scroll direction.*/
+/*finally, find the scroll speed. find a frame which is scrolled even further in the past*/
+/* if scroll would go offscreen, do nothing */
+if(i+2<Xres&&prevframe[fn0][i+1+j*Xres]==curhash){
+	f1=f0+1;
+	while(1){
+		if(f1>N_PREVFRAMES-1)break;
+		unsigned fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
+		if(!prevframe[fn1])break;
+		if(prevframe[fn1][i+2+j*Xres]==curhash){direction |= dir_right;break;}
+		f1++;
+	}
+}
+if(i-2>=0&&prevframe[fn0][i-1+j*Xres]==curhash){
+	f1=f0+1;
+	while(1){
+		if(f1>N_PREVFRAMES-1)break;
+		unsigned fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
+		if(!prevframe[fn1])break;
+		if(prevframe[fn1][i-2+j*Xres]==curhash){direction |= dir_left;break;}
+		f1++;
+	}
+}
+if(j+2<Yres&&prevframe[fn0][i+(j+1)*Xres]==curhash){
+	f1=f0+1;
+	while(1){
+		if(f1>N_PREVFRAMES-1)break;
+		unsigned fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
+		if(!prevframe[fn1])break;
+		if(prevframe[fn1][i+(j+2)*Xres]==curhash){direction |= dir_down;break;}
+		f1++;
+	}
+}
+if(j-2>=0&&prevframe[fn0][i+(j-1)*Xres]==curhash){
+	f1=f0+1;
+	while(1){
+		if(f1>N_PREVFRAMES-1)break;
+		unsigned fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
+		if(!prevframe[fn1])break;
+		if(prevframe[fn1][i+(j-2)*Xres]==curhash){direction |= dir_up;break;}
+		f1++;
+	}
+}
+return;
 }
