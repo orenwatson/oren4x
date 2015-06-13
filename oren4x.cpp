@@ -11,6 +11,7 @@ don't seem to bother me, but jerky slow scrolling pisses me off. */
 /* stale scrolling threshold. determines how many pixels to scroll before expecting the change
    in the input. 2 is too low, 5 is too high. */
 #define STALE_SCROLL_THRESH 3
+#define TOO_FAST_THRESH 4
 static int thisframen;//which index to save this frame to.
 static unsigned *prevframe[N_PREVFRAMES];//saved frames in 4 bytes hash of 9 surrounding pixels, for each pixel, in each frame.
 static unsigned *curframebuf;//save the preliminary render (noscroll) of current frame here
@@ -444,7 +445,7 @@ thisframen%=N_PREVFRAMES;
 }
 
 
-static void find_scroll_direction(unsigned &direction,unsigned &f0,unsigned &f1,int Xres,int Yres,int i,int j){
+static void find_scroll_direction(unsigned &direction,unsigned &f0,unsigned &f2,int Xres,int Yres,int i,int j){
 direction = 0;/* if things don't go well, we'll have a direction of zero, indicating we couldn't find a good way to scroll. */
 f0=1;
 if(i<0||i>=Xres||j<0||j>=Yres)return;
@@ -464,21 +465,21 @@ while(1){
    We might want to use a different threshold:
    math: f0*4/(f1-f0)-2 < Y ==> f0*4 < (Y+2)*(f1-f0) ==> f0*(Y+6) < f1*(Y+2) ==> f1 > f0*(Y+6)/(Y+2) = f0*9/5
    Also, f1-f0 < 4 implies the scroll is too fast. thus f1 >= f0 + 4 */
-int f1lim = f0*(STALE_SCROLL_THRESH+6)/(STALE_SCROLL_THRESH+2);
-int f1start=f0+1;
+int f1,f1lim = f0*(STALE_SCROLL_THRESH+6)/(STALE_SCROLL_THRESH+2);
+if(f1lim-f0 < TOO_FAST_THRESH)f1lim = f0+TOO_FAST_THRESH;
 /* now we find the scroll direction, and then find a frame which
    is scrolled even further in the past, if such scroll would go offscreen,
    dismiss that direction as invalid ( but still try others ).*/
 /* use a macro for DRY reasons */
 #define check_direction(I,J,D) \
 if(vl(I,J)&&prevframe[fn0][i+I+(j+J)*Xres]==curhash){\
-	f1=f1start;\
+	f1=f0+1;\
 	while(1){\
 		if(f1>N_PREVFRAMES-1)break;\
 		unsigned fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;\
 		if(!prevframe[fn1])break;\
-		if(prevframe[fn1][i+2+j*Xres]==curhash){\
-			if(f1 > f1lim){direction |= D;break;}\
+		if(prevframe[fn1][i+I*2+(j+2*J)*Xres]==curhash){\
+			if(f1 >= f1lim){direction |= D;f2=f1;break;}\
 			else break;}\
 		f1++;\
 	}\
