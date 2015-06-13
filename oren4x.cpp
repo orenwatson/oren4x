@@ -7,7 +7,10 @@
 /* increased to 41 frames, the slowest scroll I've seen is in Sachen 4-in-1 Armour Force,
 about 4 pix/sec, so this oughta cut it... hopefully. unsmoothed fast scrolls
 don't seem to bother me, but jerky slow scrolling pisses me off. */
-#define N_PREVFRAMES 41 
+#define N_PREVFRAMES 41
+/* stale scrolling threshold. determines how many pixels to scroll before expecting the change
+   in the input. 2 is too low, 5 is too high. */
+#define STALE_SCROLL_THRESH 3
 static int thisframen;//which index to save this frame to.
 static unsigned *prevframe[N_PREVFRAMES];//saved frames in 4 bytes hash of 9 surrounding pixels, for each pixel, in each frame.
 static unsigned *curframebuf;//save the preliminary render (noscroll) of current frame here
@@ -367,9 +370,10 @@ unsigned f1,f0 = 1;//how many frames back, the first frame differing is.
 unsigned direction;
 int id=0,jd=0,curscrl;
 find_scroll_direction(direction,f0,f1,Xres,Yres,i,j);
-if(!direction)goto fail;// this pixel is staying the same.
+if(!direction)/* this pixel is staying the same.*/
+	goto fail;
 if(direction&(direction-1)){//more than one bit set, it is ambiguous, so check if pixels nearby are unambiguous
-	unsigned d0,d1,nf0,nf1;
+	unsigned d0,d1;
 	/* if a nearby pixel has a valid direction, and it is one of the 
 	   directions this pixel could go, go in that direction. */
 #define disambiguate(I,J) \
@@ -445,11 +449,13 @@ while(1){
 	f0++;
 }
 /* if f1 is too close to f0, then the scroll is stale, and would lead to an offset of
-   greater than 4. dismiss this case from the start by starting the search for f1 later. 
-   math: f0*4/(f1-f0)-2 < 4 ==> f0*4 < 6*(f1-f0) ==> f0*10 < f1*6 ==> f1 > f0*5/3 
+   greater than 4. dismiss this case from the start by starting the search for f1 later.
+   math: f0*4/(f1-f0)-2 < 4 ==> f0*4 < 6*(f1-f0) ==> f0*10 < f1*6 ==> f1 > f0*5/3
+   We might want to use a different threshold:
+   math: f0*4/(f1-f0)-2 < T ==> f0*4 < (Y+2)*(f1-f0) ==> f0*(Y+6) < f1*(Y+2) ==> f1 > f0*(Y+6)/(Y+2)
    Also, f1-f0 < 4 implies the scroll is too fast. thus f1 >= f0 + 4 */
-int f1start = f0*5/3;
-if(f1start < f0+4)f1start=f0+4;
+int f1start = f0*(STALE_SCROLL_THRESH+6)/(STALE_SCROLL_THRESH+2)+1;
+if(f1start < f0+2)f1start=f0+2;
 /* now we find the scroll direction, and then find a frame which
    is scrolled even further in the past, if such scroll would go offscreen,
    dismiss that direction as invalid ( but still try others ).*/

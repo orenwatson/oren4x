@@ -10,3 +10,14 @@ you can use them by doing for example
 xxd -rp <gb.warm-on-cool >~/.mednafen/palettes/gb.pal
 if you don't have xxd the program xtob that I included will work, like
 xtob <gb.warm-on-cool >~/.mednafen/palettes/gb.pal
+
+You can contact me on gmail at 'oren.watson'.
+
+Other than the code I copied and modified from mednafen, (video.cpp),
+which is under the GNU General Public License version 2 as per share-alike,
+This code (oren4x.cpp, oren4x.h, xtob.c) is licensed to you herein under the 
+CC0 license, e.g. all rights are waived, and you may modify or build 
+upon this code, incorporate it into another project, even a commercial one, 
+etc, without limitation, you do not even need to credit me.
+Other licenses are also available upon request.
+
