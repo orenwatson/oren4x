@@ -323,10 +323,20 @@ H,H,M,M,
 H,M,M,M,
 M,M,M,M,
 M,M,M,M,0);
+ap3(patout4,
+Z ,Z,Z ,NH,Z,
+Z ,M,NM,Z ,Z,
+Z ,H,Z ,Z ,Z,
+NH,Z,Z ,Z ,Z,
+Z ,Z,Z ,Z ,Z,
+H,M,M,M,
+M,M,M,M,
+M,M,M,M,
+M,M,M,M,0);
 ap9(patout8,
-Z,NM,H,
-H,Z ,M,
-Z,Z ,Z,
+Z ,NM,H,
+H ,Z ,M,
+Z ,Z ,Z,
 H,H,H,M,
 H,M,M,M,
 M,M,M,M,
@@ -450,54 +460,32 @@ while(1){
 }
 /* if f1 is too close to f0, then the scroll is stale, and would lead to an offset of
    greater than 4. dismiss this case from the start by starting the search for f1 later.
-   math: f0*4/(f1-f0)-2 < 4 ==> f0*4 < 6*(f1-f0) ==> f0*10 < f1*6 ==> f1 > f0*5/3
+   actually, that causes problems. So we will enforce the threshold in a different manner.
    We might want to use a different threshold:
-   math: f0*4/(f1-f0)-2 < T ==> f0*4 < (Y+2)*(f1-f0) ==> f0*(Y+6) < f1*(Y+2) ==> f1 > f0*(Y+6)/(Y+2)
+   math: f0*4/(f1-f0)-2 < Y ==> f0*4 < (Y+2)*(f1-f0) ==> f0*(Y+6) < f1*(Y+2) ==> f1 > f0*(Y+6)/(Y+2) = f0*9/5
    Also, f1-f0 < 4 implies the scroll is too fast. thus f1 >= f0 + 4 */
-int f1start = f0*(STALE_SCROLL_THRESH+6)/(STALE_SCROLL_THRESH+2)+1;
-if(f1start < f0+2)f1start=f0+2;
+int f1lim = f0*(STALE_SCROLL_THRESH+6)/(STALE_SCROLL_THRESH+2);
+int f1start=f0+1;
 /* now we find the scroll direction, and then find a frame which
    is scrolled even further in the past, if such scroll would go offscreen,
    dismiss that direction as invalid ( but still try others ).*/
-if(i+2<Xres&&prevframe[fn0][i+1+j*Xres]==curhash){
-	f1=f1start;
-	while(1){
-		if(f1>N_PREVFRAMES-1)break;
-		unsigned fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
-		if(!prevframe[fn1])break;
-		if(prevframe[fn1][i+2+j*Xres]==curhash){direction |= dir_right;break;}
-		f1++;
-	}
+/* use a macro for DRY reasons */
+#define check_direction(I,J,D) \
+if(vl(I,J)&&prevframe[fn0][i+I+(j+J)*Xres]==curhash){\
+	f1=f1start;\
+	while(1){\
+		if(f1>N_PREVFRAMES-1)break;\
+		unsigned fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;\
+		if(!prevframe[fn1])break;\
+		if(prevframe[fn1][i+2+j*Xres]==curhash){\
+			if(f1 > f1lim){direction |= D;break;}\
+			else break;}\
+		f1++;\
+	}\
 }
-if(i-2>=0&&prevframe[fn0][i-1+j*Xres]==curhash){
-	f1=f1start;
-	while(1){
-		if(f1>N_PREVFRAMES-1)break;
-		unsigned fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
-		if(!prevframe[fn1])break;
-		if(prevframe[fn1][i-2+j*Xres]==curhash){direction |= dir_left;break;}
-		f1++;
-	}
-}
-if(j+2<Yres&&prevframe[fn0][i+(j+1)*Xres]==curhash){
-	f1=f1start;
-	while(1){
-		if(f1>N_PREVFRAMES-1)break;
-		unsigned fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
-		if(!prevframe[fn1])break;
-		if(prevframe[fn1][i+(j+2)*Xres]==curhash){direction |= dir_down;break;}
-		f1++;
-	}
-}
-if(j-2>=0&&prevframe[fn0][i+(j-1)*Xres]==curhash){
-	f1=f1start;
-	while(1){
-		if(f1>N_PREVFRAMES-1)break;
-		unsigned fn1 = (thisframen-f1+N_PREVFRAMES)%N_PREVFRAMES;
-		if(!prevframe[fn1])break;
-		if(prevframe[fn1][i+(j-2)*Xres]==curhash){direction |= dir_up;break;}
-		f1++;
-	}
-}
+check_direction(1,0,dir_right);
+check_direction(-1,0,dir_left);
+check_direction(0,1,dir_down);
+check_direction(0,-1,dir_up);
 return;
 }
