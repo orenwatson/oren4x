@@ -4,13 +4,13 @@
 #define MUHUHAHAHA
 
 #ifdef MUHUHAHAHA
-/* increased to 41 frames, the slowest scroll I've seen is in Sachen 4-in-1 Armour Force,
+/* increased to 41^H^H61 frames, the slowest scroll I've seen is in Sachen 4-in-1 Armour Force,
 about 4 pix/sec, so this oughta cut it... hopefully. unsmoothed fast scrolls
 don't seem to bother me, but jerky slow scrolling pisses me off. */
-#define N_PREVFRAMES 41
+#define N_PREVFRAMES 61
 /* stale scrolling threshold. determines how many pixels to scroll before expecting the change
    in the input. 2 is too low, 5 is too high. */
-#define STALE_SCROLL_THRESH 3
+#define STALE_SCROLL_THRESH 4
 #define TOO_FAST_THRESH 4
 static int thisframen;//which index to save this frame to.
 static unsigned *prevframe[N_PREVFRAMES];//saved frames in 4 bytes hash of 9 surrounding pixels, for each pixel, in each frame.
